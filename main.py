@@ -2,7 +2,7 @@
 Author: MrDerpus
 Python version: 3.12.3
 
-TOME Parser v1.2.0
+TOME Parser v1.3.0
 Table Oriented Markup Encoding
 
 I just wanted a good looking data structure that is easy to use in python.
@@ -10,8 +10,7 @@ Also because I keep seeing MEMEs about TOON.
 '''
 class TOME:
 	@staticmethod
-	def read(input_file:str) -> dict:
-
+	def read(_input:str, from_string:bool = False) -> dict:
 
 		# Present error message to terminal. (used inside strict_cast) ----
 		def strict_type_error(expected:str, value:str, column:str, file:str, line:int) -> None:
@@ -21,7 +20,7 @@ class TOME:
 			)
 		
 		# Cast data types for columns defined in table header.
-		def strict_cast(value:str, type_name:str, column:str, file:str, line:int): # returns str, int, float or bool
+		def strict_cast(value:str, type_name:str, column:str, file:str, line_number:int): # returns str, int, float or bool
 
 			type_map:dict = { # Data type mapping.
 				'str': str,
@@ -30,39 +29,29 @@ class TOME:
 				'bool': bool
 			}
 
-			# class empty values as empty
+			# class empty values as empty.
 			if value == '' and type_name != 'str':
 				strict_type_error(type_name, '(empty)', column, file, line_number)
 
-			# Return bool
+			# Return bool.
 			if type_name == 'bool':
 				v = value.lower()
 				if v in ['true', 'yes', '1']: return True
 				else: return False
 				strict_type_error('bool', value, column, file, line_number)
 
-			# int, float or str
+			# int, float or str.
 			try:
 				return type_map[type_name](value)
 			except:
 				strict_type_error(type_name, value, column, file, line_number)
 		# -----------------------------------------------------------------
 
-
-
-		with open(input_file, 'r') as file:
-			syntax = {
-				'brackets':'[]',       # Characters used to detect the header section.
-				'comments':['#', ';'], # Comments, lines to ignore
-				'var-type':':',        # Separate values from their data types.
-				'end-parse': '!',      # Stop parsing file.
-				'new-table': '==',     # Start parsing new table.
-				'separator': ','       # The comma delimiter.
-			}
-
+		# TOME Parser logic, used to parse TOME data into Python dictionary.
+		def PARSER_LOGIC(input_list:list):
 			table:dict     = {}   # Table dictionary that is output.
 			row_index:int  = -1   # Tracks actual data rows (index starts at 0).
-			line_number:int = 1   # Keeps track of current line number.
+			line_number:int = 0   # Keeps track of current line number.
 			table_name:str = ''   # Name of current table.
 			values:list    = []   # Store values to be added to dictionary.
 			data_type:list = []   # Get datatype for table item.
@@ -70,28 +59,37 @@ class TOME:
 			table_type:str = ''   # Set to 'dynamic' by default.
 			_type:str      = ''   # Holds current set data type for row item in header. (Only used in table_type = strict)
 			_value:str     = ''   # Holds variable name. (Only used in table_type = strict)
+			string_list:list = [] # Holds string import, from either string or from file.
 
+			syntax:dict = {
+				'brackets':'[]',       # Characters used to detect the header section.
+				'comments':['#', ';'], # Comments, lines to ignore
+				'var-type':':',        # Separate values from their data types.
+				'end-parse': '!',      # Stop parsing file.
+				# DEPRECATED! 'new-table': '==',     # Start parsing new table.
+				'separator': ','       # The comma delimiter.
+			}
 
 			
 			# Read file line by line, removing the white space from the beginning & end of the line.
-			for line in file:
+			for line in input_list:
+				line_number += 1
 				line = line.strip()
 
-				if line is None or line == '': row_index = -1; continue # Skip empty line.
+				if line == '': row_index = -1; continue # Skip empty line, and reset row_index.
 				elif line[0] in syntax['comments']: continue # Skip commented lines.
-				elif line[:2].strip() == syntax['new-table']: row_index = -1; continue # End current table parsing, and get ready to parse new table.
 				elif line[:2].strip() == syntax['end-parse']: return table   # End file parsing early, return current parsed data.
 				
 				row_index += 1
 
-				# Define table and column names
+				# Define table and column names.
 				if row_index == 0:
 					table_type = 'dynamic'
 
 
 					if syntax['brackets'][0] not in line or syntax['brackets'][1] not in line:
 						raise ValueError(
-							f'\n\nTOMEparseError @ line {line_number} in {input_file}:\n'
+							f'\n\nTOMEparseError @ line {line_number} in {_input}:\n'
 							f'Malformed table header.\n'
 						)
 
@@ -121,7 +119,7 @@ class TOME:
 							
 							else:
 								raise ValueError(
-									f'\n\nTOMEparseError @ line {line_number} in {input_file}, in Table [\'{table_name}\']:\n'
+									f'\n\nTOMEparseError @ line {line_number} in {_input}, in Table [\'{table_name}\']:\n'
 									f'Invalid data type \'{_type}\', expected only: \n'
 									'[String/str, Integer/int, float, Boolean/bool].\n'
 								)
@@ -139,7 +137,7 @@ class TOME:
 
 					if len(values) != len(columns):
 						raise ValueError(
-							f'\n\nTOMEparseError @ line {line_number} in {input_file}:\n'
+							f'\n\nTOMEparseError @ line {line_number} in {_input}:\n'
 							f'Table: [\'{table_name}\'] has {len(columns)} columns defined in header but has {len(values)} values.\n'
 						)
 
@@ -151,17 +149,35 @@ class TOME:
 								values[i],
 								data_type[i],
 								columns[i],
-								input_file,
+								_input,
 								line_number
 							)
 
 					# Append to table dictionary.
 					table[table_name].append({ columns[j]: values[j] for j in range(len(values)) })
-				
-				line_number += 1
 			
 			# Return.
 			return table
+		# -----------------------------------------------------------------
+
+
+		
+		# User defined parsing method:
+
+		# If user chooses to read from a file, grab lines from the file and place them
+		# into a list to be parsed by the TOME parser.
+		if from_string == False:
+			with open(_input, 'r') as file:
+				string_list = file.readlines()
+		
+		# Otherwise, treat the input as plaintext, and parse the string data with the
+		# TOME Parser. 
+		else:
+			string_list = _input.splitlines()
+
+		# Return parsed data.
+		parsed_data = PARSER_LOGIC(string_list)
+		return parsed_data
 
 
 
@@ -185,7 +201,7 @@ class TOME:
 		# Return TOME type string based on Python type.
 		def infer_type(value):
 			return type_map.get(type(value), 'str')
-			# str is the default data type returned using TOME.write(), unless assigned in .tome file
+			# str is the default data type returned using TOME.write(), unless assigned in .tome file.
 
 		# Convert Python values into TOME compatible strings / data types.
 		def format_value(value) -> str:
@@ -221,3 +237,9 @@ class TOME:
 		# Write to output file.
 		with open(output_file, mode) as f:
 			f.write('\n'.join(lines))
+
+
+
+
+if __name__ == '__main__':
+	print('This is a library module.')

@@ -1,31 +1,37 @@
 # TOME 📜 🧙‍♂️🔮
-## Table Oriented Markup Encoding.
+Table Oriented Markup Encoding.
+
 ```
 Author: MrDerpus
 Python version: 3.12.3
 
-TOME Parser v1.2.0
+TOME Parser v1.3.0
 Table Oriented Markup Encoding.
 
 I just wanted a good looking data structure that is easy to read.
-Also because I saw MEMEs about Ai bros mentioning: TOON.
-So I was inspired to create my own parser for my custom data structure.
 
 TOME combines:
 - SQL-like table headers.
 - CSV row entry.
-- Clean Python dictionaries as output. 
+- Clean Python dictionaries as output.
+
+The TOME parser also allows you to convert JSON data into TOME data, and vice versa!
 ```
 
-# 🪄 Another super big update! v1.2.0
-What was added? <br>
-* TOME.write, allows you to write/append to TOME files.
-* TOME <=> JSON compatibility !!!
-* Strict typing now works 100% You WILL comply! (optional)
-* Added detailed error messages.
-* Fixed bugs that caused crashes when parsing input files.
+# 🪄 Yet another large update! v1.3.0
+## What was added? <br>
+* Fixed a bug where the line number was not incremented in certain circumstances, showing the wrong line number in an error message.
+
+* Added functionality to read TOME syntax via a string without needing to access a file.
+
+* Restructured the Parser to allow the user to either parse a TOME file, or to parse a string that is TOME syntax.
+
+## What was removed? <br>
+* Removed the redundant "==" table separator.
+Blank lines have been the canonical table boundary since **v1.1.0**.
 
 ### Make sure to read the rules to see how to use these new changes.
+
 
 
 
@@ -33,12 +39,11 @@ What was added? <br>
 * Header defines the table name and ordered column list.
 * Data rows map directly to the column list.
 * Indentation is optional.
-* Commas "," separate fields.
 * Leading and trailing whitespace is purged for your convenience.
+* Commas "," separate fields.
 * Lines beginning "#" or ";" are treated as comments.
 * A line beginning with "!"  will end the parsing early.
-* A line beginning with "==" will tell the parser to start parsing a new data table.
-* A blank line separating two tables will also automatically trigger parsing for another data table.
+* A blank line resets parsing state; the next non-empty line is treated as a new table header.
 * By default, all values are returned as strings, unless specified otherwise.
 ---
 
@@ -73,7 +78,7 @@ items[name:str, price:int]:
     ; as it is not the correct data type
 
 ; Will provide this error message in your console:
-; TOMEparseError @ line 12 in test.tome:
+; TOMEparseError @ line 22 in test.tome:
 ; price expected data type: int, but 'cheap' was given instead.
 
 ; Supported data types:
@@ -145,4 +150,17 @@ with open('tome-to-json.json', 'w') as f:
 with open('tome-to-json.json', 'r') as f:
 	data = json.load(f)
 TOME.write('json-to-tome.tome', data, 'w')
+
+
+# Using the new string string parsing method v1.3.0.
+string_input = '''
+data-table[serial, item, location, qty:int]:
+    00001, m3x10 self tapping screw, shelf-3-10, 100
+    00002, 0 OHM SMD resistor, cupboard-2-5, 18
+    00003, 16V 33uf through hole capacitor, shelf-1-1, 39
+'''
+
+data = TOME.read(string_input, from_string = True)
+print(data)
+
 ```
