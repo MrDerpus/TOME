@@ -5,7 +5,7 @@ Table Oriented Markup Encoding.
 Author: MrDerpus
 Python version: 3.12.3
 
-TOME Parser v1.3.0
+TOME Parser v1.4.0
 Table Oriented Markup Encoding.
 
 I just wanted a good looking data structure that is easy to read.
@@ -15,22 +15,20 @@ TOME combines:
 - CSV row entry.
 - Clean Python dictionaries as output.
 
-The TOME parser also allows you to convert JSON data into TOME data, and vice versa!
+TOME can freely convert:
+    TOME > Python > JSON
+    JSON > Python > TOME
 ```
 
-# 🪄 Yet another large update! v1.3.0
+# 🪄 An average sized update! v1.4.0
 ## What was added? <br>
-* Fixed a bug where the line number was not incremented in certain circumstances, showing the wrong line number in an error message.
+* Added an argument to TOME.write(), where you can now generate a TOME syntax python string as output, using a python TOME formatted dictionary as input.
 
-* Added functionality to read TOME syntax via a string without needing to access a file.
+* Added an argument to change the delimiter for both read() & write() functions.
 
-* Restructured the Parser to allow the user to either parse a TOME file, or to parse a string that is TOME syntax.
+* Did minimal variable name changes.
 
-## What was removed? <br>
-* Removed the redundant "==" table separator.
-Blank lines have been the canonical table boundary since **v1.1.0**.
-
-### Make sure to read the rules to see how to use these new changes.
+### Make sure to read the rules, and see examples to see how to use these new changes.
 
 
 
@@ -95,7 +93,7 @@ from main import TOME
 import json
 
 # Accessing values in Python: ------------
-data:dict = TOME.read('./path/to/file/test.tome')
+data:dict = TOME.read(input='./path/to/file.tome')
 ''' returns dictionary in this format:
 {
     'items': [
@@ -137,7 +135,7 @@ data['new_table'] = [
     }
 ]
 
-TOME.write('new_file.tome', data, 'w')
+TOME.write(output='new_file.tome', table=data, mode='w')
 
 
 # Converting formats . . .
@@ -149,18 +147,27 @@ with open('tome-to-json.json', 'w') as f:
 # JSON to TOME
 with open('tome-to-json.json', 'r') as f:
 	data = json.load(f)
-TOME.write('json-to-tome.tome', data, 'w')
+TOME.write(output='json-to-tome.tome', table=data, mode='w')
 
 
-# Using the new string string parsing method v1.3.0.
+# Using the new string parsing method v1.3.0. (updated v1.4.0)
 string_input = '''
-data-table[serial, item, location, qty:int]:
-    00001, m3x10 self tapping screw, shelf-3-10, 100
-    00002, 0 OHM SMD resistor, cupboard-2-5, 18
-    00003, 16V 33uf through hole capacitor, shelf-1-1, 39
+data-table[serial. item. location. qty:int]:
+    00001. m3x10 self tapping screw. shelf-3-10. 100
+    00002. 0 OHM SMD resistor. cupboard-2-5. 18
+    00003. 16V 33uf through hole capacitor. shelf-1-1. 39
 '''
 
-data = TOME.read(string_input, from_string = True)
+data = TOME.read(from_string=True, input=string_input, delimiter='.')
 print(data)
+
+
+# Using the new dictionary parsing method to return a string v1.4.0.
+data_string = TOME.write(to_string=True, table=data, delimiter='.')
+print(data_string)
+
+# And again to prove round trip compatibility.
+parsed = TOME.read(from_string=True input=data_string)
+print(parsed)
 
 ```
