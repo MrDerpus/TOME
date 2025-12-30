@@ -2,7 +2,7 @@
 Author: MrDerpus
 Python version: 3.12.3
 
-TOME Parser v1.4.0
+TOME Parser v1.5.0
 Table Oriented Markup Encoding
 '''
 class TOME:
@@ -47,7 +47,7 @@ class TOME:
 		# TOME Parser logic, used to parse TOME data into Python dictionary.
 		def PARSER_LOGIC(input_list:list):
 			table:dict     = {}   # Table dictionary that is output.
-			row_index:int  = -1   # Tracks actual data rows (index starts at 0).
+			row_index:int  = -2   # Tracks actual data rows (index starts at 0, new table processed at -1).
 			line_number:int = 0   # Keeps track of current line number.
 			table_name:str = ''   # Name of current table.
 			values:list    = []   # Store values to be added to dictionary.
@@ -57,37 +57,72 @@ class TOME:
 			_type:str      = ''   # Holds current set data type for row item in header. (Only used in table_type = strict)
 			_value:str     = ''   # Holds variable name. (Only used in table_type = strict)
 			string_list:list = [] # Holds string import, from either string or from file.
+			table_declared:bool = False # Holds a TRUE or FALSE value wether conditions are met to start parsing a new table.
+			skippable_line:bool = False # Holds a TRUE or FALSE value wether conditions are met to skip or ignore a line.
+			end_file_parse:bool = False # Holds a TRUE or FALSE value wether conditions are met to end parsing for current file.
+			multiline_comment:bool = False # Holds a TRUE or FALSE value wether conditions are met for a multi line comment. 
 
 			syntax:dict = {
 				'brackets':  '[]',       # Characters used to detect the header section.
-				'comments':  ['#', ';'], # Comments, lines to ignore
 				'var-type':  ':',        # Separate values from their data types.
+				'comments':  ['#', ';', '/*'], # Comments, lines to ignore.
 				'end-parse': '!',        # Stop parsing file.
-				'separator':  delimiter  # The comma delimiter.
+				'separator':  delimiter  # The delimiter.
 			}
 
-			
+
 			# Read file line by line, removing the white space from the beginning & end of the line.
 			for line in input_list:
 				line_number += 1
 				line = line.strip()
 
-				if line == '': row_index = -1; continue # Skip empty line, and reset row_index.
-				elif line[0] in syntax['comments']: continue # Skip commented lines.
-				elif line[:2].strip() == syntax['end-parse']: return table   # End file parsing early, return current parsed data.
+
+				# Multiline comment handling
+				# If */ (terminate multiline)
+				if line[:2] == syntax['comments'][2][::-1] and multiline_comment == True:
+					multiline_comment = False
+					continue
+
+				# If /* (activate multiline)
+				elif line[:2] == syntax['comments'][2]:
+					multiline_comment = True
+					continue
+
+				# If multiline comment active
+				elif multiline_comment == True:
+					continue
+
 				
+
+				table_declared = ( 
+					syntax['brackets'][0] in line and
+					syntax['brackets'][1] in line and
+					line.endswith(':')
+				)
+				skippable_line = ( line == '' or line[0] in syntax['comments'] )
+				end_file_parse = ( line[:2] == syntax['end-parse'] )
+
+				if table_declared: row_index = -1 # Reset row_index.
+				elif skippable_line: continue     # Skip empty line
+				elif end_file_parse: return table # End file parsing early, return current parsed data.
+
+				# error check for malformed table header
+				if (
+					syntax['brackets'][0] in line and 
+					syntax['brackets'][1] in line and 
+					not line.endswith(':')
+				):
+					raise ValueError(
+						f'\n\nTOMEparseError @ line {line_number} in {input}:\n'
+						f'Malformed table header, Missing ":" \n'
+					)
+
+
 				row_index += 1
 
 				# Define table and column names.
 				if row_index == 0:
 					table_type = 'dynamic'
-
-
-					if syntax['brackets'][0] not in line or syntax['brackets'][1] not in line:
-						raise ValueError(
-							f'\n\nTOMEparseError @ line {line_number} in {input}:\n'
-							f'Malformed table header.\n'
-						)
 
 					table_name = line.split(syntax['brackets'][0])[0].strip() # Collect table name.
 					columns    = line.split(syntax['brackets'][0])[1].split(syntax['brackets'][1])[0].split(syntax['separator']) # I dont suffer from Long-line-itis, I genuinely enjoy it.
